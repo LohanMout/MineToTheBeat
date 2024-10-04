@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MineToTheBeat</title>
+  </head>
+  <style>
+    body {
+      background-color: rgb(48, 48, 48);
+    }
+    canvas {
+      border: 1px solid black;
+      background-image: url("images/BackgroundBig.png");
+      text-align: center;
+      padding-left: 0;
+      padding-right: 0;
+      margin-left: auto;
+      margin-right: auto;
+      display: block;
+    }
+  </style>
+  <body>
+    <canvas width="1300" height="700"></canvas>
+  </body>
+  <script>
+    let leCanvas = document.querySelector("canvas");
+    let ctx = leCanvas.getContext("2d");
+    let commenceJeu = false;
+    //perso
+    let persoJeu = new Image();
+    persoJeu.src = "images/persoJeuBig.png";
+    let xPerso = 450;
+    let xFonctionPerso = 50;
+    let yPerso;
+    let vitessePerso = 5;
+    //boule
+    let bouleJeu = new Image();
+    bouleJeu.src = "images/rocheJeuBig.png";
+    let xBoule = 1976;
+    let yBoule = -511;
+    let VxBoule = 4;
+    let VyBoule = 1.5;
+    //bougerRegles
+    let reglesJeu = new Image();
+    reglesJeu.src = "images/regleBig.png";
+    let xRegles;
+    let yFonctionRegles = -50;
+    let yRegles = (leCanvas.height - 636) / 2;
+    let vitesseRegles;
+    //titre
+    let titre = {
+      x: 200,
+      y: -250,
+    };
+    let titreJeu = new Image();
+    titreJeu.src = "images/titreBig.png";
+    let musique = new Audio();
+    musique.src = "sons/MineToTheBeat_loop.mp3";
+    /////////////////////////////////////////////////////////////////////////////////////
+    let temps = 0;
+    let tempsBon = true;
+    //valeurs perso
+    let lesPositionsPerso = [];
+    for (let i = 0; i < 5; i++) {
+      let largeur = leCanvas.width / 5 - 50;
+      lesPositionsPerso[i] = largeur * i + largeur / 2 + 80;
+    }
+    let positionPerso = 2;
+    let positionDiamant = Math.floor(Math.random() * 5);
+    let collisionPersoDiamant;
+    let collisionPersoBoule;
+    let score = 0;
+    // valeurs perso
+    let perso = {
+      img: new Image(),
+      urlImage: "images/persoSpriteBig.png",
+      x: 20,
+      y: leCanvas.height - 237,
+      largeur: 102,
+      hauteur: 227,
+      nbVignettes: 4,
+      indexVignette: 0,
+      sourceX: 0,
+    };
+    perso.img.src = perso.urlImage;
+    //valeurs diamant
+    let diamant = {
+      img: new Image(),
+      urlImage: "images/diamantBig.png",
+      x: lesPositionsPerso[positionDiamant],
+      y: leCanvas.height - 116,
+      largeur: 91,
+      hauteur: 91,
+    };
+    diamant.img.src = diamant.urlImage;
+    if (diamant.x == 610) {
+      diamant.x = lesPositionsPerso[0] + 40;
+    }
+    let cercle = {
+      img: new Image(),
+      urlImage: "images/cercleTemps.png",
+      x: leCanvas.width - 164,
+      y: 50,
+      largeur: 114,
+      hauteur: 114,
+      nbVignettes: 4,
+      indexVignette: 0,
+      sourceX: 0,
+    };
+    cercle.img.src = cercle.urlImage;
+
+    let boule = {
+      position: 100,
+    };
+    let lesBoules = [];
+    let tempsBoule = 0;
+
+    let mort = new Image();
+    mort.src = "images/mortBig.png";
+
+    let finjeu = false;
+    //////////////////////////////////
+    document.addEventListener("keydown", touche);
+    debut = setInterval(actualiserDebut, 1000 / 144);
+    let intervalID;
+    let intervalCercle;
+    let intervalPerso;
+    let intervalBoule;
+    let intervalDeplacerBoule;
+    let chiffreImpossible = 5500 / 3;
+    ///fonction///
+
+    function actualiserDebut() {
+      ctx.clearRect(0, 0, leCanvas.width, leCanvas.height);
+      bougerPerso();
+      bougerBoule();
+      bougerRegles();
+      ctx.drawImage(titreJeu, titre.x, titre.y);
+
+      if (commenceJeu == true) {
+        leCanvas.style.backgroundImage =
+          "url('images/BackgroundInGameBig.png')";
+        musique.play();
+        musique.loop = true;
+        clearInterval(debut);
+        intervalID = setInterval(actualiser, 1000 / 60);
+        intervalPerso = setInterval(
+          animationPerso,
+          (1000 / chiffreImpossible) * 1000
+        );
+        intervalBoule = setInterval(mettreUneBoule, 1000);
+        intervalDeplacerBoule = setInterval(deplacerBoule, 250);
+      }
+    }
+
+    function bougerPerso() {
+      ctx.drawImage(persoJeu, xPerso, yPerso);
+
+      if (xFonctionPerso >= -10) {
+        xFonctionPerso -= 0.2;
+        yPerso = Math.pow(xFonctionPerso, 2);
+      }
+    }
+
+    function bougerBoule() {
+      ctx.drawImage(bouleJeu, xBoule, yBoule);
+      xBoule -= VxBoule;
+      yBoule += VyBoule;
+      if (xBoule <= 960 && yBoule >= -130) {
+        VxBoule = VxBoule * 0.975;
+        VyBoule = VyBoule * 0.975;
+      } else if (xBoule <= 784 && yBoule >= -64) {
+        xBoule = 784;
+        yBoule = -64;
+      }
+    }
+
+    function bougerRegles() {
+      ctx.drawImage(reglesJeu, xRegles, yRegles);
+      if (yFonctionRegles <= 0) {
+        yFonctionRegles += 0.2;
+        xRegles = -Math.pow(yFonctionRegles, 2) + 45;
+      }
+    }
+    ///////////////////////////////////////////////////////////////////////////////////
+    function touche(event) {
+      if (event.keyCode == 32) {
+        commenceJeu = true;
+        if (finjeu) {
+          document.location.reload();
+        }
+      }
+      if (event.keyCode == 37) {
+        if (positionPerso > 0) {
+          positionPerso -= 1;
+        }
+      }
+      if (event.keyCode == 39) {
+        if (positionPerso < lesPositionsPerso.length - 1) {
+          positionPerso += 1;
+        }
+      }
+    }
+
+    function actualiser() {
+      ctx.clearRect(0, 0, leCanvas.width, leCanvas.height);
+
+      temps += 1;
+      if (temps == 60) {
+        temps = 0;
+      }
+      perso.x = lesPositionsPerso[positionPerso];
+
+      collisionPersoDiamant = detecterCollisionEntreRectangles(diamant, perso);
+      collisionPersoBoule = detecterCollisionEntreRectangles(boule, perso);
+      ctx.drawImage(diamant.img, diamant.x, diamant.y);
+
+      ctx.drawImage(
+        perso.img,
+        perso.sourceX,
+        0,
+        perso.largeur,
+        perso.hauteur,
+        perso.x,
+        perso.y,
+        perso.largeur,
+        perso.hauteur
+      );
+
+      tempsBoule++;
+
+      ctx.drawImage(
+        boule.img,
+        boule.sourceX,
+        0,
+        boule.largeur,
+        boule.hauteur,
+        boule.x,
+        boule.y,
+        boule.largeur,
+        boule.hauteur
+      );
+
+      ctx.font = "bold 32px Calibri";
+      ctx.fillStyle = "red";
+      ctx.fillText("Diamants ramassés: " + score, 20, 40);
+
+      if (collisionPersoDiamant) {
+        deplacerDiamant();
+      }
+      if (collisionPersoBoule) {
+        clearInterval(intervalDeplacerBoule);
+        clearInterval(intervalID);
+        clearInterval(intervalPerso);
+        clearInterval(intervalBoule);
+        ctx.clearRect(0, 0, leCanvas.width, leCanvas.height);
+        ctx.font = "bold 120px Calibri";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("GAME OVER", leCanvas.width / 2, leCanvas.height / 2);
+        ctx.font = "bold 30px Calibri";
+        ctx.fillText(
+          "Appuie sur [espace] pour recommencer",
+          leCanvas.width / 2,
+          leCanvas.height / 2 + 50
+        );
+        ctx.drawImage(mort, perso.x - 75, perso.y);
+        finjeu = true;
+        musique.pause();
+      }
+    }
+    function deplacerDiamant() {
+      while (positionDiamant == positionPerso) {
+        positionDiamant = Math.floor(Math.random() * 5);
+        diamant.x = lesPositionsPerso[positionDiamant];
+      }
+      score++;
+    }
+
+    function animationPerso() {
+      perso.sourceX = perso.indexVignette * perso.largeur;
+
+      perso.indexVignette += 1;
+
+      if (perso.indexVignette >= perso.nbVignettes) {
+        perso.indexVignette = 0;
+      }
+    }
+
+    function mettreUneBoule() {
+      let unePosition = Math.floor(Math.random() * 5);
+      boule = {
+        img: new Image(),
+        urlImage: "images/spriteBouleVrai.png",
+        x: 0,
+        y: 0,
+        largeur: 182,
+        hauteur: 191,
+        nbVignettes: 4,
+        indexVignette: 0,
+        sourceX: 0,
+        position: unePosition,
+      };
+      boule.img.src = boule.urlImage;
+
+      lesBoules.push(boule);
+    }
+
+    function deplacerBoule() {
+      for (let uneBoule of lesBoules) {
+        uneBoule.y += 90;
+        if (lesBoules.length > 2) {
+          let index = lesBoules.indexOf(uneBoule);
+          lesBoules.splice(index, 1);
+        }
+
+        if (uneBoule.position == 0) {
+          uneBoule.x = -0.6 * uneBoule.y + 245 + uneBoule.largeur;
+        } else if (uneBoule.position == 1) {
+          uneBoule.x = -0.25 * uneBoule.y + 320 + uneBoule.largeur;
+        } else if (uneBoule.position == 2) {
+          uneBoule.x = leCanvas.width / 2 - uneBoule.largeur / 2;
+        } else if (uneBoule.position == 3) {
+          uneBoule.x = 0.35 * uneBoule.y + 400 + uneBoule.largeur;
+        } else if (uneBoule.position == 4) {
+          uneBoule.x = 0.8 * uneBoule.y + 450 + uneBoule.largeur;
+        }
+
+        uneBoule.sourceX = uneBoule.indexVignette * uneBoule.largeur;
+
+        uneBoule.indexVignette += 1;
+
+        if (uneBoule.indexVignette >= uneBoule.nbVignettes) {
+          uneBoule.indexVignette = 0;
+        }
+      }
+    }
+
+    function detecterCollisionEntreRectangles(rectangle1, rectangle2) {
+      if (
+        rectangle1.x < rectangle2.x + rectangle2.largeur &&
+        rectangle1.x + rectangle1.largeur > rectangle2.x &&
+        rectangle1.y < rectangle2.y + rectangle2.hauteur &&
+        rectangle1.y + rectangle1.hauteur > rectangle2.y
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    }
+  </script>
+</html>
